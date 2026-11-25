@@ -1,0 +1,401 @@
+﻿@using System.Data
+
+@{
+    ViewData["Title"] = "Employee Management";
+    DataTable departments = ViewBag.Departments;
+}
+
+<h2>Employee Management</h2>
+
+@Html.AntiForgeryToken()
+
+<input type="hidden" id="EmployeeId" value="0" />
+
+<div id="msg" class="alert alert-success" style="display:none"></div>
+
+<div class="row">
+
+    <div class="col-md-6">
+        <label>Name</label>
+        <input id="Name" class="form-control" />
+        <small id="nameError" class="text-danger"></small>
+    </div>
+
+    <div class="col-md-6">
+        <label>Gender</label><br />
+
+        <input type="radio" name="Gender" value="Male" /> Male
+        <input type="radio" name="Gender" value="Female" /> Female
+
+        <small id="genderError" class="text-danger"></small>
+    </div>
+
+    <div class="col-md-6 mt-2">
+        <label>Department</label>
+
+        <select id="DepartmentId" class="form-control">
+            <option value="0">Select Department</option>
+
+            @foreach (DataRow d in departments.Rows)
+            {
+                <option value="@d["DepartmentId"]">
+                    @d["DepartmentName"]
+                </option>
+            }
+        </select>
+
+        <small id="departmentError" class="text-danger"></small>
+    </div>
+
+    <div class="col-md-6 mt-2">
+        <label>State</label>
+
+        <select id="State" class="form-control">
+            <option value="">Select State</option>
+            <option value="Maharashtra">Maharashtra</option>
+            <option value="Gujarat">Gujarat</option>
+            <option value="Karnataka">Karnataka</option>
+        </select>
+
+        <small id="stateError" class="text-danger"></small>
+    </div>
+
+    <div class="col-md-6 mt-2">
+        <label>City</label>
+
+        <select id="City" class="form-control">
+            <option value="">Select City</option>
+        </select>
+
+        <small id="cityError" class="text-danger"></small>
+    </div>
+
+    <div class="col-md-6 mt-2">
+        <label>Salary</label>
+
+        <input id="Salary" type="number" class="form-control" />
+
+        <small id="salaryError" class="text-danger"></small>
+    </div>
+
+</div>
+
+<br />
+
+<button id="saveBtn" class="btn btn-primary">Save</button>
+<button id="clearBtn" class="btn btn-secondary">Clear</button>
+
+<hr />
+
+<h4>Employee List</h4>
+
+<input id="Search" class="form-control"
+       placeholder="Search Employee" />
+
+<br />
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Gender</th>
+            <th>Department</th>
+            <th>State</th>
+            <th>City</th>
+            <th>Salary</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+
+    <tbody id="employeeTable"></tbody>
+</table>
+
+<hr />
+
+<h5>External API</h5>
+
+<button id="apiBtn" class="btn btn-info">Get API User</button>
+
+<span id="apiResult"></span>
+
+
+@section Scripts {
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+    <script>
+
+        $(document).ready(function () {
+
+            // Load Employee List
+            function loadEmployees() {
+
+                $.getJSON('/Employee/List',
+                    { search: $('#Search').val() },
+                    function (data) {
+
+                        $('#employeeTable').html('');
+
+                        for (var i = 0; i < data.length; i++) {
+
+                            var e = data[i];
+
+                            var row = $('<tr>');
+
+                            row.append($('<td>').text(e.name));
+                            row.append($('<td>').text(e.gender));
+                            row.append($('<td>').text(e.departmentName));
+                            row.append($('<td>').text(e.state));
+                            row.append($('<td>').text(e.city));
+                            row.append($('<td>').text(e.salary));
+
+                            var edit = $('<button>')
+                                .text('Edit')
+                                .addClass('btn btn-warning edit')
+                                .data('id', e.employeeId);
+
+                            var del = $('<button>')
+                                .text('Delete')
+                                .addClass('btn btn-danger delete')
+                                .data('id', e.employeeId);
+
+                            var action = $('<td>');
+
+                            action.append(edit);
+                            action.append(' ');
+                            action.append(del);
+
+                            row.append(action);
+
+                            $('#employeeTable').append(row);
+                        }
+
+                    });
+
+            }
+
+            loadEmployees();
+
+
+            // State and City Dropdown
+            $('#State').change(function () {
+
+                var state = $(this).val();
+
+                $('#City').html('<option value="">Select City</option>');
+
+                if (state == 'Maharashtra') {
+
+                    $('#City').append('<option>Mumbai</option>');
+                    $('#City').append('<option>Pune</option>');
+                    $('#City').append('<option>Thane</option>');
+
+                }
+                else if (state == 'Gujarat') {
+
+                    $('#City').append('<option>Ahmedabad</option>');
+                    $('#City').append('<option>Surat</option>');
+                    $('#City').append('<option>Vadodara</option>');
+
+                }
+                else if (state == 'Karnataka') {
+
+                    $('#City').append('<option>Bengaluru</option>');
+                    $('#City').append('<option>Mysuru</option>');
+                    $('#City').append('<option>Mangaluru</option>');
+
+                }
+
+            });
+
+
+            // Save and Update
+            $('#saveBtn').click(function () {
+
+                $('.text-danger').text('');
+
+                var name = $('#Name').val().trim();
+                var salary = Number($('#Salary').val());
+                var gender = $('input[name="Gender"]:checked').val();
+
+                // Name Validation
+                if (!/^[A-Za-z ]{3,100}$/.test(name)) {
+                    $('#nameError').text('Enter valid name');
+                    return;
+                }
+
+                // Gender Validation
+                if (!gender) {
+                    $('#genderError').text('Select gender');
+                    return;
+                }
+
+                // Department Validation
+                if ($('#DepartmentId').val() == '0') {
+                    $('#departmentError').text('Select department');
+                    return;
+                }
+
+                // State Validation
+                if ($('#State').val() == '') {
+                    $('#stateError').text('Select state');
+                    return;
+                }
+
+                // City Validation
+                if ($('#City').val() == '') {
+                    $('#cityError').text('Select city');
+                    return;
+                }
+
+                // Salary Validation
+                if (isNaN(salary) || salary < 1 || salary > 10000000) {
+                    $('#salaryError').text('Enter valid salary');
+                    return;
+                }
+
+                // Employee Object
+                var employee = {
+
+                    EmployeeId: $('#EmployeeId').val(),
+                    Name: name,
+                    Gender: gender,
+                    DepartmentId: $('#DepartmentId').val(),
+                    State: $('#State').val(),
+                    City: $('#City').val(),
+                    Salary: salary
+
+                };
+
+                employee.__RequestVerificationToken =
+                    $('input[name="__RequestVerificationToken"]').val();
+
+                var action = 'Add';
+
+                if ($('#EmployeeId').val() != '0') {
+                    action = 'Update';
+                }
+
+                $.post('/Employee/' + action, employee, function (result) {
+
+                    alert(result.message);
+
+                    clearForm();
+                    loadEmployees();
+
+                }).fail(function (xhr) {
+
+                    if (xhr.responseJSON) {
+                        alert(xhr.responseJSON.message);
+                    }
+                    else {
+                        alert('Something went wrong');
+                    }
+
+                });
+
+            });
+
+
+            // Edit Employee
+            $('#employeeTable').on('click', '.edit', function () {
+
+                var id = $(this).data('id');
+
+                $.getJSON('/Employee/Get', { id: id }, function (e) {
+
+                    $('#EmployeeId').val(e.employeeId);
+                    $('#Name').val(e.name);
+
+                    $('input[name="Gender"][value="' + e.gender + '"]')
+                        .prop('checked', true);
+
+                    $('#DepartmentId').val(e.departmentId);
+
+                    $('#State').val(e.state).change();
+
+                    $('#City').val(e.city);
+
+                    $('#Salary').val(e.salary);
+
+                    $('#saveBtn').text('Update');
+
+                });
+
+            });
+
+
+            // Delete Employee
+            $('#employeeTable').on('click', '.delete', function () {
+
+                var id = $(this).data('id');
+
+                if (confirm('Are you sure you want to delete?')) {
+
+                    $.post('/Employee/Delete', {
+
+                        id: id,
+
+                        __RequestVerificationToken:
+                            $('input[name="__RequestVerificationToken"]').val()
+
+                    }, function (result) {
+
+                        alert(result.message);
+
+                        loadEmployees();
+
+                    });
+
+                }
+
+            });
+
+
+            // Clear Form
+            function clearForm() {
+
+                $('#EmployeeId').val('0');
+                $('#Name').val('');
+                $('#Salary').val('');
+
+                $('input[name="Gender"]').prop('checked', false);
+
+                $('#DepartmentId').val('0');
+                $('#State').val('');
+
+                $('#City').html('<option value="">Select City</option>');
+
+                $('.text-danger').text('');
+
+                $('#saveBtn').text('Save');
+
+            }
+
+            $('#clearBtn').click(function () {
+                clearForm();
+            });
+
+
+            // Search Employee
+            $('#Search').keyup(function () {
+                loadEmployees();
+            });
+
+
+            // External API
+            $('#apiBtn').click(function () {
+
+                $.getJSON('https://jsonplaceholder.typicode.com/users/1',
+                    function (user) {
+
+                        $('#apiResult').text(user.name);
+
+                    });
+
+            });
+
+        });
+
+    </script>
+}
