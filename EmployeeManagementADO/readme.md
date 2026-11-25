@@ -1,1 +1,2 @@
 
+Install-Package Microsoft.Data.SqlClient
